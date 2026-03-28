@@ -64,7 +64,7 @@ func (i *Interpreter) Interpret(stmts []ast.Stmt) (result any, hasRuntimeError b
 func (i *Interpreter) VisitAssignExpr(expr ast.AssignExpr) interface{} {
 	value := i.evaluate(expr.Value)
 
-	distance, ok := i.locals[expr]; 
+	distance, ok := i.locals[expr]
 	if ok {
 		i.environment.AssignAt(distance, expr.Name, value)
 	} else {
@@ -133,15 +133,26 @@ func (i *Interpreter) VisitCallExpr(expr ast.CallExpr) interface{} {
 		arguments[idx] = i.evaluate(argument)
 	}
 
-
 	function, ok := (callee).(callable)
 	if !ok {
 		panic(runtimeError{token: expr.Paren, msg: "Can only call functions and classes."})
 	}
 	if len(arguments) != function.arity() {
-		panic(runtimeError{ token: expr.Paren, msg: fmt.Sprintf("Expected %d arguments but got %d.", function.arity(), len(arguments)) })
+		panic(runtimeError{token: expr.Paren, msg: fmt.Sprintf("Expected %d arguments but got %d.", function.arity(), len(arguments))})
 	}
 	return function.call(i, arguments)
+}
+
+func (i *Interpreter) VisitGetExpr(expr ast.GetExpr) interface{} {
+	object := i.evaluate(expr.Object)
+	if instance, ok := object.(Instance); ok {
+		val, err := instance.Get(expr.Name)
+		if err != nil {
+			panic(err)
+		}
+		return val
+	}
+	panic(runtimeError{token: expr.Name, msg: "Only instances of properties"})
 }
 
 func (i *Interpreter) VisitGroupingExpr(expr ast.GroupingExpr) interface{} {
@@ -166,6 +177,18 @@ func (i *Interpreter) VisitLogicalExpr(expr ast.LogicalExpr) interface{} {
 	}
 
 	return i.evaluate(expr.Right)
+}
+
+func (i *Interpreter) VisitSetExpr(expr ast.SetExpr) interface{} {
+	object := i.evaluate(expr.Object)
+
+	inst, ok := object.(*instance)
+	if !ok {
+		panic(runtimeError{token: expr.Name, msg: "Only instances have fields."})
+	}
+	value := i.evaluate(expr.Value)
+	inst.Set(expr.Name, value)
+	return nil
 }
 
 func (i *Interpreter) VisitUnaryExpr(expr ast.UnaryExpr) interface{} {
@@ -220,11 +243,6 @@ func (i *Interpreter) executeBlock(statements []ast.Stmt, env *env.Environment) 
 	}
 }
 
-func (i *Interpreter) VisitBlockStmt(stmt ast.BlockStmt) interface{} {
-	i.executeBlock(stmt.Statements, env.New(i.environment))
-	return nil
-}
-
 func (i *Interpreter) isTruthy(val any) bool {
 	if val == nil {
 		return false
@@ -269,6 +287,25 @@ func (i *Interpreter) stringify(val any) string {
 }
 
 // Implement Stmt visitor
+func (i *Interpreter) VisitBlockStmt(stmt ast.BlockStmt) interface{} {
+	i.executeBlock(stmt.Statements, env.New(i.environment))
+	return nil
+}
+
+func (i *Interpreter) VisitClassStmt(stmt ast.ClassStmt) interface{} {
+	i.environment.Define(stmt.Name.Lexeme, nil)
+
+	methods := make(map[string]function, len(stmt.Methods))
+	for _, method := range stmt.Methods {
+		fn := function{declaration: method, closure: i.environment}
+		methods[method.Name.Lexeme] = fn
+	}
+
+	class := Class{Name: stmt.Name.Lexeme, Methods: methods}
+	i.environment.Assign(stmt.Name, class)
+	return nil
+}
+
 func (i *Interpreter) VisitExpressionStmt(stmt ast.ExpressionStmt) interface{} {
 	i.evaluate(stmt.Expr)
 	return nil

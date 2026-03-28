@@ -33,6 +33,15 @@ func (c CallExpr) Accept(visitor ExprVisitor) interface{} {
 	return visitor.VisitCallExpr(c)
 }
 
+type GetExpr struct {
+	Object Expr
+	Name   Token
+}
+
+func (g GetExpr) Accept(visitor ExprVisitor) interface{} {
+	return visitor.VisitGetExpr(g)
+}
+
 type GroupingExpr struct {
 	Expression Expr
 }
@@ -59,6 +68,16 @@ func (l LogicalExpr) Accept(visitor ExprVisitor) interface{} {
 	return visitor.VisitLogicalExpr(l)
 }
 
+type SetExpr struct {
+	Object Expr
+	Name   Token
+	Value  Expr
+}
+
+func (s SetExpr) Accept(visitor ExprVisitor) interface{} {
+	return visitor.VisitSetExpr(s)
+}
+
 type UnaryExpr struct {
 	Operator Token
 	Right    Expr
@@ -80,9 +99,11 @@ type ExprVisitor interface {
 	VisitAssignExpr(expr AssignExpr) interface{}
 	VisitBinaryExpr(expr BinaryExpr) interface{}
 	VisitCallExpr(expr CallExpr) interface{}
+	VisitGetExpr(expr GetExpr) interface{}
 	VisitGroupingExpr(expr GroupingExpr) interface{}
 	VisitLiteralExpr(expr LiteralExpr) interface{}
 	VisitLogicalExpr(expr LogicalExpr) interface{}
+	VisitSetExpr(expr SetExpr) interface{}
 	VisitUnaryExpr(expr UnaryExpr) interface{}
 	VisitVariableExpr(expr VariableExpr) interface{}
 }

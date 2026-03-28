@@ -13,6 +13,7 @@ type functionType int
 const (
 	NONE functionType = iota
 	FUNCTION
+	METHOD
 )
 
 type scope map[string]bool
@@ -80,6 +81,17 @@ func (r *Resolver) VisitBlockStmt(stmt ast.BlockStmt) interface{} {
 	r.beginScope()
 	r.ResolveStatements(stmt.Statements)
 	r.endScope()
+	return nil
+}
+
+func (r *Resolver) VisitClassStmt(stmt ast.ClassStmt) interface{} {
+	r.declare(stmt.Name)
+	r.define(stmt.Name)
+
+	for _, method := range stmt.Methods {
+		r.resolveFunction(method, METHOD)
+	}
+
 	return nil
 }
 
@@ -205,6 +217,11 @@ func (r *Resolver) VisitCallExpr(expr ast.CallExpr) interface{} {
 	return nil
 }
 
+func (r *Resolver) VisitGetExpr(expr ast.GetExpr) interface{} {
+	r.resolveExpr(expr.Object)
+	return nil
+}
+
 func (r *Resolver) VisitGroupingExpr(expr ast.GroupingExpr) interface{} {
 	r.resolveExpr(expr.Expression)
 	return nil
@@ -218,6 +235,12 @@ func (r *Resolver) VisitLiteralExpr(expr ast.LiteralExpr) interface{} {
 func (r *Resolver) VisitLogicalExpr(expr ast.LogicalExpr) interface{} {
 	r.resolveExpr(expr.Left)
 	r.resolveExpr(expr.Right)
+	return nil
+}
+
+func (r *Resolver) VisitSetExpr(expr ast.SetExpr) interface{} {
+	r.resolveExpr(expr.Value)
+	r.resolveExpr(expr.Object)
 	return nil
 }
 

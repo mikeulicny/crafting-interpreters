@@ -22,6 +22,10 @@ func (p AstPrinter) VisitCallExpr(expr CallExpr) interface{} {
 	panic("TODO: IMPLEMENT THIS")
 }
 
+func (p AstPrinter) VisitGetExpr(expr GetExpr) interface{} {
+	panic("TODO: IMPLEMENT THIS")
+}
+
 func (p AstPrinter) VisitGroupingExpr(expr GroupingExpr) interface{} {
 	return p.parenthesize("group", expr.Expression)
 }
@@ -35,6 +39,10 @@ func (p AstPrinter) VisitLiteralExpr(expr LiteralExpr) interface{} {
 
 func (p AstPrinter) VisitLogicalExpr(expr LogicalExpr) interface{} {
 	return p.parenthesize(expr.Operator.Lexeme, expr.Left, expr.Right)
+}
+
+func (p AstPrinter) VisitSetExpr(expr SetExpr) interface{} {
+	panic("TODO: IMPLEMENT THIS")
 }
 
 func (p AstPrinter) VisitUnaryExpr(expr UnaryExpr) interface{} {

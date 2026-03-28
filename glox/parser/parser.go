@@ -10,9 +10,11 @@ import (
  * Parser Grammer
  *
  * program      → declaration* EOF ;
- * declaration  → funDecl | varDecl | statement ;
+ * declaration  → classDecl | funDecl | varDecl | statement ;
+ * classDecl    → "class" IDENTIFIER "{" function* "}" ;
  * funDecl      → "fun" function ;
  * function     → IDENTIFIER "(" parameters? ")" block ;
+ * parameters   → IDENTIFIER ( "," IDENTIFIER )* ;
  * varDecl      → "var" IDENTIFIER ( "=" expression )? ";" ;
  * statement    → exprStmt | forStmt | ifStmt | printStmt | returnStmt | whileStmt | block ;
  * forStmt      → "for" "(" ( varDecl | exprStmt | ";" )
@@ -26,8 +28,7 @@ import (
  * printStmt    → "print" expression ";" ;
  * returnStmt   → "return" expression? ";" ;
  * expression   → assignment ;
- * assignment   → IDENTIFIER "=" assignment
- *              | logic_or ;
+ * assignment   → ( call "." )? IDENTIFIER "=" assignment | logic_or ;
  * logic_or     → logic_and ( "or" logic_and )* ;
  * logic_and    → equality ( "and" equality )* ;
  * ternary      → logic_or ( "?" ternary ":" ternary )* ;
@@ -36,13 +37,9 @@ import (
  * term         → factor ( ( "-" | "+" ) factor )* ;
  * factor       → unary ( ( "/" | "*" ) unary )* ;
  * unary        → ( "!" | "-" ) unary | call ;
- * call         → primary ( "(" arguments? ")" )* ;
+ * call         → primary ( "(" arguments? ")" | "." IDENTIFIER )* ;
  * arguments    → expression ( "," expression )* ;
- * parameters   → IDENTIFIER ( "," IDENTIFIER )* ;
- * primary      → "true" | "false" | "nil"
- *              | NUMBER | STRING
- *              | "(" expression ")"
- *              | IDENTIFIER ;
+ * primary      → "true" | "false" | "nil" | NUMBER | STRING | "(" expression ")" | IDENTIFIER ;
  */
 
 type parseError struct {
@@ -96,6 +93,9 @@ func (p *Parser) declaration() ast.Stmt {
 		}
 	}()
 
+	if p.match(ast.CLASS) {
+		return p.classDeclaration()
+	}
 	if p.match(ast.FUN) {
 		return p.function("function")
 	}
@@ -104,6 +104,18 @@ func (p *Parser) declaration() ast.Stmt {
 	}
 
 	return p.statement()
+}
+
+func (p *Parser) classDeclaration() ast.Stmt {
+	name := p.consume(ast.IDENTIFIER, "Expect class name.")
+	p.consume(ast.LEFT_BRACE, "Expect '{' before class body.")
+	var methods []ast.FunctionStmt
+	for !p.check(ast.RIGHT_BRACE) && !p.isAtEnd() {
+		method := p.function("method")
+		methods = append(methods, method)
+	}
+	p.consume(ast.RIGHT_BRACE, "Expect '}' after class body.")
+	return ast.ClassStmt{Name: name, Methods: methods}
 }
 
 func (p *Parser) statement() ast.Stmt {
@@ -226,7 +238,7 @@ func (p *Parser) expressionStatement() ast.Stmt {
 	return ast.ExpressionStmt{Expr: expr}
 }
 
-func (p *Parser) function(kind string) ast.Stmt {
+func (p *Parser) function(kind string) ast.FunctionStmt {
 	name := p.consume(ast.IDENTIFIER, "Expect "+kind+" name.")
 	p.consume(ast.LEFT_PAREN, "Expect '(' after "+kind+" name.")
 	var params []ast.Token
@@ -269,6 +281,12 @@ func (p *Parser) assignment() ast.Expr {
 
 		if varExpr, ok := expr.(ast.VariableExpr); ok {
 			return ast.AssignExpr{Name: varExpr.Name, Value: value}
+		} else if getExpr, ok := expr.(ast.GetExpr); ok {
+			return ast.SetExpr{
+				Object: getExpr.Object,
+				Name:   getExpr.Name,
+				Value:  value,
+			}
 		}
 
 		p.error(equals, "Invalid assignment target.")
@@ -364,6 +382,9 @@ func (p *Parser) call() ast.Expr {
 	for {
 		if p.match(ast.LEFT_PAREN) {
 			expr = p.finishCall(expr)
+		} else if p.match(ast.DOT) {
+			name := p.consume(ast.IDENTIFIER, "Expect property name after '.'.")
+			expr = ast.GetExpr{Object: expr, Name: name}
 		} else {
 			break
 		}
