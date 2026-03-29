@@ -8,8 +8,9 @@ import (
 // A Class type that identifies behavior of a Class in glox
 // This is where the methods of a Class are stored
 type Class struct {
-	Name    string
-	Methods map[string]function
+	Name       string
+	Superclass *Class
+	Methods    map[string]function
 }
 
 func NewClass(name string) *Class {
@@ -41,6 +42,10 @@ func (c Class) arity() int {
 func (c Class) findMethod(name string) *function {
 	if method, ok := c.Methods[name]; ok {
 		return &method
+	}
+
+	if c.Superclass != nil {
+		return c.Superclass.findMethod(name)
 	}
 
 	return nil

@@ -78,6 +78,15 @@ func (s SetExpr) Accept(visitor ExprVisitor) interface{} {
 	return visitor.VisitSetExpr(s)
 }
 
+type SuperExpr struct {
+	Keyword Token
+	Method  Token
+}
+
+func (s SuperExpr) Accept(visitor ExprVisitor) interface{} {
+	return visitor.VisitSuperExpr(s)
+}
+
 type ThisExpr struct {
 	Keyword Token
 }
@@ -112,6 +121,7 @@ type ExprVisitor interface {
 	VisitLiteralExpr(expr LiteralExpr) interface{}
 	VisitLogicalExpr(expr LogicalExpr) interface{}
 	VisitSetExpr(expr SetExpr) interface{}
+	VisitSuperExpr(expr SuperExpr) interface{}
 	VisitThisExpr(expr ThisExpr) interface{}
 	VisitUnaryExpr(expr UnaryExpr) interface{}
 	VisitVariableExpr(expr VariableExpr) interface{}

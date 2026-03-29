@@ -11,7 +11,7 @@ import (
  *
  * program      → declaration* EOF ;
  * declaration  → classDecl | funDecl | varDecl | statement ;
- * classDecl    → "class" IDENTIFIER "{" function* "}" ;
+ * classDecl    → "class" IDENTIFIER ( "<" IDENTIFIER )? "{" function* "}" ;
  * funDecl      → "fun" function ;
  * function     → IDENTIFIER "(" parameters? ")" block ;
  * parameters   → IDENTIFIER ( "," IDENTIFIER )* ;
@@ -39,7 +39,7 @@ import (
  * unary        → ( "!" | "-" ) unary | call ;
  * call         → primary ( "(" arguments? ")" | "." IDENTIFIER )* ;
  * arguments    → expression ( "," expression )* ;
- * primary      → "true" | "false" | "nil" | NUMBER | STRING | "(" expression ")" | IDENTIFIER ;
+ * primary      → "true" | "false" | "nil" | NUMBER | STRING | "(" expression ")" | "super" "." IDENTIFIER ;
  */
 
 type parseError struct {
@@ -108,6 +108,13 @@ func (p *Parser) declaration() ast.Stmt {
 
 func (p *Parser) classDeclaration() ast.Stmt {
 	name := p.consume(ast.IDENTIFIER, "Expect class name.")
+
+	var superclass *ast.VariableExpr
+	if p.match(ast.LESS) {
+		p.consume(ast.IDENTIFIER, "Expect superclass name.")
+		superclass = &ast.VariableExpr{Name: p.previous()}
+	}
+
 	p.consume(ast.LEFT_BRACE, "Expect '{' before class body.")
 	var methods []ast.FunctionStmt
 	for !p.check(ast.RIGHT_BRACE) && !p.isAtEnd() {
@@ -115,7 +122,7 @@ func (p *Parser) classDeclaration() ast.Stmt {
 		methods = append(methods, method)
 	}
 	p.consume(ast.RIGHT_BRACE, "Expect '}' after class body.")
-	return ast.ClassStmt{Name: name, Methods: methods}
+	return ast.ClassStmt{Name: name, Superclass: superclass, Methods: methods}
 }
 
 func (p *Parser) statement() ast.Stmt {
@@ -424,6 +431,11 @@ func (p *Parser) primary() ast.Expr {
 		return ast.LiteralExpr{Value: nil}
 	case p.match(ast.NUMBER, ast.STRING):
 		return ast.LiteralExpr{Value: p.previous().Literal}
+	case p.match(ast.SUPER):
+		keyword := p.previous()
+		p.consume(ast.DOT, "Expect '.' after 'super'.")
+		method := p.consume(ast.IDENTIFIER, "Expect superclass method name.")
+		return ast.SuperExpr{Keyword: keyword, Method: method}
 	case p.match(ast.THIS):
 		return ast.ThisExpr{Keyword: p.previous()}
 	case p.match(ast.IDENTIFIER):

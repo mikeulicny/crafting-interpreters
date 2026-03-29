@@ -45,6 +45,10 @@ func (p AstPrinter) VisitSetExpr(expr SetExpr) interface{} {
 	panic("TODO: IMPLEMENT THIS")
 }
 
+func (p AstPrinter) VisitSuperExpr(expr SuperExpr) interface{} {
+	panic("TODO: IMPLEMENT THIS")
+}
+
 func (p AstPrinter) VisitThisExpr(expr ThisExpr) interface{} {
 	panic("TODO: IMPLEMENT THIS")
 }

@@ -22,6 +22,7 @@ type classType int
 const (
 	CLASS_NONE classType = iota
 	CLASS_CLASS
+	CLASS_SUBCLASS
 )
 
 type scope map[string]bool
@@ -30,6 +31,7 @@ func (s *scope) has(key string) (declared bool, defined bool) {
 	return false, false
 }
 
+// Creates and sets a variable within the scope to true
 func (s scope) set(name string) {
 	s[name] = true
 }
@@ -103,6 +105,21 @@ func (r *Resolver) VisitClassStmt(stmt ast.ClassStmt) interface{} {
 
 	r.declare(stmt.Name)
 	r.define(stmt.Name)
+
+	if (stmt.Superclass != nil) && (stmt.Name.Lexeme == stmt.Superclass.Name.Lexeme) {
+		r.error(stmt.Superclass.Name, "A class can't inherit from itself.")
+	}
+
+	if stmt.Superclass != nil {
+		r.currentClass = CLASS_SUBCLASS
+		r.resolveExpr(stmt.Superclass)
+	}
+
+	if stmt.Superclass != nil {
+		r.beginScope()
+		defer func() { r.endScope() }()
+		r.scopes.peek().set("super")
+	}
 
 	r.beginScope()
 	r.scopes.peek().set("this")
@@ -268,6 +285,16 @@ func (r *Resolver) VisitLogicalExpr(expr ast.LogicalExpr) interface{} {
 func (r *Resolver) VisitSetExpr(expr ast.SetExpr) interface{} {
 	r.resolveExpr(expr.Value)
 	r.resolveExpr(expr.Object)
+	return nil
+}
+
+func (r *Resolver) VisitSuperExpr(expr ast.SuperExpr) interface{} {
+	if r.currentClass == CLASS_NONE {
+		r.error(expr.Keyword, "Can't use 'super' outside of a class.")
+	} else if r.currentClass != CLASS_SUBCLASS {
+		r.error(expr.Keyword, "Can't use 'super' in a class with no superclass.")
+	}
+	r.resolveLocal(expr, expr.Keyword)
 	return nil
 }
 

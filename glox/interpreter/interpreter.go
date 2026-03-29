@@ -191,6 +191,19 @@ func (i *Interpreter) VisitSetExpr(expr ast.SetExpr) interface{} {
 	return nil
 }
 
+func (i *Interpreter) VisitSuperExpr(expr ast.SuperExpr) interface{} {
+	distance, _ := i.locals[expr]
+	superclass := i.environment.GetAt(distance, "super").(*Class)
+	object := i.environment.GetAt(distance - 1, "this").(*instance)
+	method := superclass.findMethod(expr.Method.Lexeme)
+	// If we don't find the method
+	if method == nil {
+		panic(runtimeError{token: expr.Method, msg: "Undefined property '"+expr.Method.Lexeme+"'."})
+	}
+	return method.bind(object)
+
+}
+
 func (i *Interpreter) VisitThisExpr(expr ast.ThisExpr) interface{} {
 	val, err := i.lookupVariable(expr.Keyword, expr)
 	if err != nil {
@@ -301,7 +314,21 @@ func (i *Interpreter) VisitBlockStmt(stmt ast.BlockStmt) interface{} {
 }
 
 func (i *Interpreter) VisitClassStmt(stmt ast.ClassStmt) interface{} {
+	var superclass *Class
+	if stmt.Superclass != nil {
+		val, ok := i.evaluate(stmt.Superclass).(Class)
+		if !ok {
+			panic(runtimeError{token: stmt.Superclass.Name, msg: "Superclass must be a class."})
+		}
+		superclass = &val
+	}
+
 	i.environment.Define(stmt.Name.Lexeme, nil)
+
+	if stmt.Superclass != nil {
+		i.environment = env.New(i.environment)
+		i.environment.Define("super", superclass)
+	}
 
 	methods := make(map[string]function, len(stmt.Methods))
 	for _, method := range stmt.Methods {
@@ -313,7 +340,12 @@ func (i *Interpreter) VisitClassStmt(stmt ast.ClassStmt) interface{} {
 		methods[method.Name.Lexeme] = fn
 	}
 
-	class := Class{Name: stmt.Name.Lexeme, Methods: methods}
+	class := Class{Name: stmt.Name.Lexeme, Superclass: superclass, Methods: methods}
+
+	if superclass != nil {
+		i.environment = i.environment.Enclosing
+	}
+
 	i.environment.Assign(stmt.Name, class)
 	return nil
 }
