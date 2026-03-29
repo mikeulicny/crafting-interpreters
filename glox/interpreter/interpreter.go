@@ -191,6 +191,14 @@ func (i *Interpreter) VisitSetExpr(expr ast.SetExpr) interface{} {
 	return nil
 }
 
+func (i *Interpreter) VisitThisExpr(expr ast.ThisExpr) interface{} {
+	val, err := i.lookupVariable(expr.Keyword, expr)
+	if err != nil {
+		panic(err)
+	}
+	return val
+}
+
 func (i *Interpreter) VisitUnaryExpr(expr ast.UnaryExpr) interface{} {
 	right := i.evaluate(expr.Right)
 
@@ -297,7 +305,11 @@ func (i *Interpreter) VisitClassStmt(stmt ast.ClassStmt) interface{} {
 
 	methods := make(map[string]function, len(stmt.Methods))
 	for _, method := range stmt.Methods {
-		fn := function{declaration: method, closure: i.environment}
+		fn := function{
+			declaration:   method,
+			closure:       i.environment,
+			isInitializer: method.Name.Lexeme == "init",
+		}
 		methods[method.Name.Lexeme] = fn
 	}
 
@@ -312,7 +324,7 @@ func (i *Interpreter) VisitExpressionStmt(stmt ast.ExpressionStmt) interface{} {
 }
 
 func (i *Interpreter) VisitFunctionStmt(stmt ast.FunctionStmt) interface{} {
-	function := function{declaration: stmt, closure: i.environment}
+	function := function{declaration: stmt, closure: i.environment, isInitializer: false}
 	i.environment.Define(stmt.Name.Lexeme, function)
 	return nil
 }

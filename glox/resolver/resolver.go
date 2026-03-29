@@ -13,13 +13,25 @@ type functionType int
 const (
 	NONE functionType = iota
 	FUNCTION
+	INITIALIZER
 	METHOD
+)
+
+type classType int
+
+const (
+	CLASS_NONE classType = iota
+	CLASS_CLASS
 )
 
 type scope map[string]bool
 
 func (s *scope) has(key string) (declared bool, defined bool) {
 	return false, false
+}
+
+func (s scope) set(name string) {
+	s[name] = true
 }
 
 type stack []scope
@@ -48,6 +60,7 @@ type Resolver struct {
 	interpreter     *interpreter.Interpreter
 	scopes          stack
 	currentFunction functionType
+	currentClass    classType
 	stdErr          io.Writer
 	hadError        bool
 }
@@ -85,13 +98,24 @@ func (r *Resolver) VisitBlockStmt(stmt ast.BlockStmt) interface{} {
 }
 
 func (r *Resolver) VisitClassStmt(stmt ast.ClassStmt) interface{} {
+	enclosingClass := r.currentClass
+	r.currentClass = CLASS_CLASS
+
 	r.declare(stmt.Name)
 	r.define(stmt.Name)
 
-	for _, method := range stmt.Methods {
-		r.resolveFunction(method, METHOD)
-	}
+	r.beginScope()
+	r.scopes.peek().set("this")
 
+	fnType := METHOD
+	for _, method := range stmt.Methods {
+		if method.Name.Lexeme == "init" {
+			fnType = INITIALIZER
+		}
+		r.resolveFunction(method, fnType)
+	}
+	r.currentClass = enclosingClass
+	r.endScope()
 	return nil
 }
 
@@ -177,6 +201,9 @@ func (r *Resolver) VisitReturnStmt(stmt ast.ReturnStmt) interface{} {
 		r.error(stmt.Keyword, "Can't return from top-level code.")
 	}
 	if stmt.Value != nil {
+		if r.currentFunction == INITIALIZER {
+			r.error(stmt.Keyword, "Can't return a value from an initializer.")
+		}
 		r.resolveExpr(stmt.Value)
 	}
 	return nil
@@ -241,6 +268,15 @@ func (r *Resolver) VisitLogicalExpr(expr ast.LogicalExpr) interface{} {
 func (r *Resolver) VisitSetExpr(expr ast.SetExpr) interface{} {
 	r.resolveExpr(expr.Value)
 	r.resolveExpr(expr.Object)
+	return nil
+}
+
+func (r *Resolver) VisitThisExpr(expr ast.ThisExpr) interface{} {
+	if r.currentClass == CLASS_NONE {
+		r.error(expr.Keyword, "Can't use 'this' outside of a class.")
+		return nil
+	}
+	r.resolveLocal(expr, expr.Keyword)
 	return nil
 }
 

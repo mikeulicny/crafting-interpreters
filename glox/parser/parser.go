@@ -415,25 +415,20 @@ func (p *Parser) finishCall(callee ast.Expr) ast.Expr {
 }
 
 func (p *Parser) primary() ast.Expr {
-	if p.match(ast.FALSE) {
+	switch {
+	case p.match(ast.FALSE):
 		return ast.LiteralExpr{Value: false}
-	}
-	if p.match(ast.TRUE) {
+	case p.match(ast.TRUE):
 		return ast.LiteralExpr{Value: true}
-	}
-	if p.match(ast.NIL) {
+	case p.match(ast.NIL):
 		return ast.LiteralExpr{Value: nil}
-	}
-
-	if p.match(ast.NUMBER, ast.STRING) {
+	case p.match(ast.NUMBER, ast.STRING):
 		return ast.LiteralExpr{Value: p.previous().Literal}
-	}
-
-	if p.match(ast.IDENTIFIER) {
+	case p.match(ast.THIS):
+		return ast.ThisExpr{Keyword: p.previous()}
+	case p.match(ast.IDENTIFIER):
 		return ast.VariableExpr{Name: p.previous()}
-	}
-
-	if p.match(ast.LEFT_PAREN) {
+	case p.match(ast.LEFT_PAREN):
 		expr := p.expression()
 		p.consume(ast.RIGHT_PAREN, "Expect ')' after expression")
 		return ast.GroupingExpr{Expression: expr}

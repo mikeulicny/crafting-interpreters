@@ -45,6 +45,10 @@ func (p AstPrinter) VisitSetExpr(expr SetExpr) interface{} {
 	panic("TODO: IMPLEMENT THIS")
 }
 
+func (p AstPrinter) VisitThisExpr(expr ThisExpr) interface{} {
+	panic("TODO: IMPLEMENT THIS")
+}
+
 func (p AstPrinter) VisitUnaryExpr(expr UnaryExpr) interface{} {
 	return p.parenthesize(expr.Operator.Lexeme, expr.Right)
 }

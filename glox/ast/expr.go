@@ -78,6 +78,14 @@ func (s SetExpr) Accept(visitor ExprVisitor) interface{} {
 	return visitor.VisitSetExpr(s)
 }
 
+type ThisExpr struct {
+	Keyword Token
+}
+
+func (t ThisExpr) Accept(visitor ExprVisitor) interface{} {
+	return visitor.VisitThisExpr(t)
+}
+
 type UnaryExpr struct {
 	Operator Token
 	Right    Expr
@@ -104,6 +112,7 @@ type ExprVisitor interface {
 	VisitLiteralExpr(expr LiteralExpr) interface{}
 	VisitLogicalExpr(expr LogicalExpr) interface{}
 	VisitSetExpr(expr SetExpr) interface{}
+	VisitThisExpr(expr ThisExpr) interface{}
 	VisitUnaryExpr(expr UnaryExpr) interface{}
 	VisitVariableExpr(expr VariableExpr) interface{}
 }

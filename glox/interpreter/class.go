@@ -8,12 +8,12 @@ import (
 // A Class type that identifies behavior of a Class in glox
 // This is where the methods of a Class are stored
 type Class struct {
-	Name string
+	Name    string
 	Methods map[string]function
 }
 
 func NewClass(name string) *Class {
-	return &Class{ Name: name }
+	return &Class{Name: name}
 }
 
 func (c Class) String() string {
@@ -21,14 +21,21 @@ func (c Class) String() string {
 }
 
 func (c Class) call(interpreter *Interpreter, arguments []any) any {
-
 	instance := &instance{class: c}
+	initializer := c.findMethod("init")
+	if initializer != nil {
+		initializer.bind(instance).call(interpreter, arguments)
+	}
 
 	return instance
 }
 
 func (c Class) arity() int {
-	return 0
+	initializer := c.findMethod("init")
+	if initializer == nil {
+		return 0
+	}
+	return initializer.arity()
 }
 
 func (c Class) findMethod(name string) *function {
@@ -46,7 +53,7 @@ type Instance interface {
 // An instance of a Class in the glox language
 // This is where the state of a class is stored
 type instance struct {
-	class Class
+	class  Class
 	fields map[string]any
 }
 
@@ -61,12 +68,15 @@ func (i *instance) Get(name ast.Token) (any, error) {
 
 	method := i.class.findMethod(name.Lexeme)
 	if method != nil {
-		return method, nil
+		return method.bind(i), nil
 	}
 
 	return nil, runtimeError{token: name, msg: fmt.Sprintf("Undefined property '%s'.", name.Lexeme)}
 }
 
 func (i *instance) Set(name ast.Token, value any) {
+	if i.fields == nil {
+		i.fields = make(map[string]any)
+	}
 	i.fields[name.Lexeme] = value
 }
