@@ -7,7 +7,7 @@ EXEC=clox
 TARGET=build/$(EXEC)
 
 all: $(TARGET)
-	@echo "///////////// SUCCESS /////////////"
+	@echo "////////// BUILD SUCCESS //////////"
 
 build/%.o: %.c | build
 	$(CC) $(CFLAGS) -c $< -o $@
