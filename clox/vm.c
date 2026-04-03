@@ -55,15 +55,15 @@ static bool is_falsey(Value value) {
 static InterpretResult run() {
 #define READ_BYTE() (*vm.ip++)
 #define READ_CONSTANT() (vm.chunk->constants.values[READ_BYTE()])
-#define BINARY_OP(value_type, op) \
-    do {                          \
+#define BINARY_OP(value_type, op)                         \
+    do {                                                  \
         if (!IS_NUMBER(peek(0)) || !IS_NUMBER(peek(1))) { \
-            runtime_error("operands must be numbers.");  \
-            return INTERPRET_RUNTIME_ERROR;              \
-        }                                                \
-        double b = AS_NUMBER(pop());                     \
-        double a = AS_NUMBER(pop());                     \
-        push(value_type(a op b));                        \
+            runtime_error("Operands must be numbers.");   \
+            return INTERPRET_RUNTIME_ERROR;               \
+        }                                                 \
+        double b = AS_NUMBER(pop());                      \
+        double a = AS_NUMBER(pop());                      \
+        push(value_type(a op b));                         \
     } while (0)
 
     for (;;) {
