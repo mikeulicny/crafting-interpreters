@@ -22,9 +22,21 @@ static ObjString *allocate_string(char *chars, int length) {
     return string;
 }
 
+ObjString *take_string(char *chars, int length) {
+    return allocate_string(chars, length);
+}
+
 ObjString *copy_string(const char *chars, int length) {
     char *heap_chars = ALLOCATE(char, length + 1);
     memcpy(heap_chars, chars, length);
     heap_chars[length] = '\0';
     return allocate_string(heap_chars, length);
+}
+
+void print_object(Value value) {
+    switch (OBJ_TYPE(value)) {
+        case OBJ_STRING:
+            printf("%s", AS_CSTRING(value));
+            break;
+    }
 }
