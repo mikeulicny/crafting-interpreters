@@ -183,6 +183,20 @@ static bool identifiers_equal(Token *a, Token *b) {
     return memcmp(a->start, b->start, a->length) == 0;
 }
 
+static int resolve_local(Compiler *compiler, Token *name) {
+    for (int i = compiler->local_count - 1; i >= 0; i--) {
+        Local *local = &compiler->locals[i];
+        if (identifiers_equal(name, &local->name)) {
+            if (local->depth == -1) {
+                error("Can't read local variable in its own initializer.");
+            }
+            return i;
+        }
+    }
+
+    return -1;
+}
+
 static void add_local(Token name) {
     if (current->local_count == UINT8_COUNT) {
         error("Too many local variables in function.");
@@ -191,7 +205,7 @@ static void add_local(Token name) {
 
     Local *local = &current->locals[current->local_count++];
     local->name = name;
-    local->depth = current->scope_depth;
+    local->depth = -1;
 }
 
 static void declare_variable() {
@@ -220,8 +234,13 @@ static uint8_t parse_variable(const char *error_message) {
     return identifier_constant(&parser.previous);
 }
 
+static void mark_initialized() {
+    current->locals[current->local_count - 1].depth = current->scope_depth;
+}
+
 static void define_variable(uint8_t global) {
     if (current->scope_depth > 0) {
+        mark_initialized();
         return;
     }
 
@@ -272,13 +291,22 @@ static void string(bool can_assign) {
 }
 
 static void named_variable(Token name, bool can_assign) {
-    uint8_t arg = identifier_constant(&name);
+    uint8_t get_op, set_op;
+    int arg = resolve_local(current, &name);
+    if (arg != -1) {
+        get_op = OP_GET_LOCAL;
+        set_op = OP_SET_LOCAL;
+    } else {
+        arg = identifier_constant(&name);
+        get_op = OP_GET_GLOBAL;
+        set_op = OP_SET_GLOBAL;
+    }
     
     if (can_assign && match(TOKEN_EQUAL)) {
         expression();
-        emit_bytes(OP_SET_GLOBAL, arg);
+        emit_bytes(set_op, (uint8_t)arg);
     } else {
-        emit_bytes(OP_GET_GLOBAL, arg);
+        emit_bytes(get_op, (uint8_t)arg);
     }
 }
 
