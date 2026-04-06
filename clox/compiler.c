@@ -626,7 +626,7 @@ static void statement() {
     }
 }
 
-ObjFunction *compile(const char *source, Chunk *chunk) {
+ObjFunction *compile(const char *source) {
     init_scanner(source);
     Compiler compiler;
     init_compiler(&compiler, TYPE_SCRIPT);
