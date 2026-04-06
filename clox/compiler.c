@@ -147,6 +147,7 @@ static int emit_jump(uint8_t instruction) {
 }
 
 static void emit_return() {
+    emit_byte(OP_NIL);
     emit_byte(OP_RETURN);
 }
 
@@ -299,6 +300,21 @@ static void define_variable(uint8_t global) {
     emit_bytes(OP_DEFINE_GLOBAL, global);
 }
 
+static uint8_t argument_list() {
+    uint8_t arg_count = 0;
+    if (!check(TOKEN_RIGHT_PAREN)) {
+        do {
+            expression();
+            if (arg_count == 255) {
+                error("Can't have more than 255 arguments.");
+            }
+            arg_count++;
+        } while (match(TOKEN_COMMA));
+    }
+    consume(TOKEN_RIGHT_PAREN, "Expect ')' after arguments.");
+    return arg_count;
+}
+
 static void and_(bool can_assign) {
     int end_jump = emit_jump(OP_JUMP_IF_FALSE);
 
@@ -325,6 +341,11 @@ static void binary(bool can_assign) {
         case TOKEN_SLASH:         emit_byte(OP_DIVIDE); break;
         default: return; // unreachable
     }
+}
+
+static void call(bool can_assign) {
+    uint8_t arg_count = argument_list();
+    emit_bytes(OP_CALL, arg_count);
 }
 
 static void literal(bool can_assign) {
@@ -400,7 +421,7 @@ static void unary(bool can_assign) {
 }
 
 ParseRule rules[] = {
-  [TOKEN_LEFT_PAREN]    = {grouping, NULL,   PREC_NONE},
+  [TOKEN_LEFT_PAREN]    = {grouping, call,   PREC_CALL},
   [TOKEN_RIGHT_PAREN]   = {NULL,     NULL,   PREC_NONE},
   [TOKEN_LEFT_BRACE]    = {NULL,     NULL,   PREC_NONE}, 
   [TOKEN_RIGHT_BRACE]   = {NULL,     NULL,   PREC_NONE},
