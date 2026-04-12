@@ -165,6 +165,13 @@ static void close_upvalues(Value *last) {
     }
 }
 
+static void define_method(ObjString *name) {
+    Value method = peek(0);
+    ObjClass *class = AS_CLASS(peek(1));
+    table_set(&class->methods, name, method);
+    pop();
+}
+
 static bool is_falsey(Value value) {
     return IS_NIL(value) || (IS_BOOL(value) && !AS_BOOL(value));
 }
@@ -398,6 +405,9 @@ static InterpretResult run() {
             }
             case OP_CLASS:
                 push(OBJ_VAL(new_class(READ_STRING())));
+                break;
+            case OP_METHOD:
+                define_method(READ_STRING());
                 break;
         }
     }
