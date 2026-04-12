@@ -68,6 +68,12 @@ static void blacken_object(Obj *object) {
     printf("\n");
 #endif
     switch (object->type) {
+        case OBJ_BOUND_METHOD: {
+            ObjBoundMethod *bound = (ObjBoundMethod*)object;
+            mark_value(bound->receiver);
+            mark_object((Obj*)bound->method);
+            break;
+        }
         case OBJ_CLASS: {
             ObjClass *class = (ObjClass*)object;
             mark_object((Obj*)class->name);
@@ -109,6 +115,9 @@ static void free_object(Obj *object) {
 #endif
 
     switch (object->type) {
+        case OBJ_BOUND_METHOD:
+            FREE(ObjBoundMethod, object);
+            break;
         case OBJ_CLASS: {
             ObjClass *class = (ObjClass*)object;
             free_table(&class->methods);
