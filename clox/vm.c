@@ -64,12 +64,16 @@ void init_VM() {
     init_table(&vm.globals);
     init_table(&vm.strings);
 
+    vm.init_string = NULL;
+    vm.init_string = copy_string("init", 4);
+
     define_native("clock", clock_native);
 }
 
 void free_VM() {
     free_table(&vm.globals);
     free_table(&vm.strings);
+    vm.init_string = NULL;
     free_objects();
 }
 
@@ -119,6 +123,13 @@ static bool call_value(Value callee, int arg_count) {
             case OBJ_CLASS: {
                 ObjClass *class = AS_CLASS(callee);
                 vm.stack_top[-arg_count - 1] = OBJ_VAL(new_instance(class));
+                Value initializer;
+                if (table_get(&class->methods, vm.init_string, &initializer)) {
+                    return call(AS_CLOSURE(initializer), arg_count);
+                } else if (arg_count != 0) {
+                    runtime_error("Expected 0 arguments but got %d.", arg_count);
+                    return false;
+                }
                 return true;
             }
             case OBJ_CLOSURE:
