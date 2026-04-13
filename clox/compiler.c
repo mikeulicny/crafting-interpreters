@@ -70,6 +70,7 @@ typedef struct Compiler {
 
 typedef struct ClassCompiler {
     struct ClassCompiler *enclosing;
+    bool has_superclass;
 } ClassCompiler;
 
 Parser parser;
@@ -491,6 +492,13 @@ static void variable(bool can_assign) {
     named_variable(parser.previous, can_assign);
 }
 
+static Token synthetic_token(const char *text) {
+    Token token;
+    token.start = text;
+    token.length = (int)strlen(text);
+    return token;
+}
+
 static void this_(bool can_assign) {
     if (current_class == NULL) {
         error("Can't use 'this' outside of a class.");
@@ -646,6 +654,7 @@ static void class_declaration() {
     define_variable(name_constant);
 
     ClassCompiler class_compiler;
+    class_compiler.has_superclass = false;
     class_compiler.enclosing = current_class;
     current_class = &class_compiler;
 
@@ -655,8 +664,13 @@ static void class_declaration() {
         if (identifiers_equal(&class_name, &parser.previous)) {
             error("A class can't inherit from itself.");
         }
+        begin_scope();
+        add_local(synthetic_token("super"));
+        define_variable(0);
+
         named_variable(class_name, false);
         emit_byte(OP_INHERIT);
+        class_compiler.has_superclass = true;
     }
 
     named_variable(class_name, false);
@@ -666,6 +680,10 @@ static void class_declaration() {
     }
     consume(TOKEN_RIGHT_BRACE, "Expect '}' after class body.");
     emit_byte(OP_POP);
+
+    if (class_compiler.has_superclass) {
+        end_scope();
+    }
 
     current_class = current_class->enclosing;
 }
